@@ -1,0 +1,325 @@
+using System.Collections;
+using System.Collections.Generic;
+using Unity.VisualScripting;
+using UnityEngine;
+
+
+public class Player : MonoBehaviour
+{
+    public GameManager gameManager;        //게임매니저를 불러옴.
+    CapsuleCollider2D capsulecollider2D;   //캡슐 콜라이더2D를 불러옴.
+    public float maxSpeed;                 //public변수로 플레이어의 MaxSpeed를 설정.
+    public float jumppower;                //public변수로 플레이어의 Jumppower을 설정.
+    int isJump;                            //isJump로 몇 번의 점프를 할건지 설정. 
+
+
+    Rigidbody2D rigid;             //Rigidbody2D 가져오기. 
+    SpriteRenderer spriteRenderer; //컴포넌트 가져오기.
+    Animator anim;                 //Animator 가져오기.
+
+
+    //사운드                           
+    public AudioClip audioJump;       //상황에 따라 Audio를 나오게 하기 위해서
+    public AudioClip audioAttack;     //AudioClip 설정.
+    public AudioClip audioDamaged;    //점프,어택,데미지 입었을 때,아이템,죽었을 때,게임클리어
+    public AudioClip audioItem;       //오디오클립 변수 설정
+    public AudioClip audioDie;        //public으로 해서 바깥에서 오디오소스를 넣음.
+    public AudioClip audioClear;
+    
+
+    AudioSource audioSource;
+    //플레이어에 AudioSource 하나 , 효과음 AudioClip 변수 추가
+
+
+
+    
+    void Awake()  //Awake는 처음 시작할 때 한 번 실행. 여기서 컴포넌트 초기화. 
+    {
+        capsulecollider2D = GetComponent<CapsuleCollider2D>();
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        rigid = GetComponent<Rigidbody2D>(); //Rigidbody2D 선언 후 초기화 
+        isJump = 0;
+        anim = GetComponent<Animator>();
+        audioSource = GetComponent<AudioSource>();
+    }
+    
+    
+  //<사운드 관리>======================================================================
+    
+    void PlaySound(string action) //Switch문을 통해 입력된 문자열에 따른 오디오 클립을 넣고
+                                  //플레이 시킴.
+    {
+        switch (action)
+        {
+            case "JUMP":
+                audioSource.clip = audioJump;
+                audioSource.Play();               //점프에 관한 오디오
+                break;
+            case "ATTACK":
+                audioSource.clip = audioAttack;
+                audioSource.Play();                //타격에 관한 오디오
+                break;
+            case "DAMAGED":
+                audioSource.clip = audioDamaged;
+                audioSource.Play();                //데미지 입은 것에 관한 오디오
+                break;
+            case "ITEM":
+                audioSource.clip = audioItem;
+                audioSource.Play();                //아이템에 관한 오디오
+                break;
+            case "DIE":
+                audioSource.clip = audioDie;
+                audioSource.Play();                //죽음에 관한 오디오
+                break;
+            case "FINISH":
+                audioSource.clip = audioClear;
+                audioSource.Play();                //피니쉬에 관한 오디오
+                break;
+        }
+    }
+    
+    //==============================================================================
+    
+    void Start()
+    {
+
+    }
+
+
+
+    void FixedUpdate()
+    {
+        //Rigidbody는 FixedUpdate에서 해야 좋음. 단발적인 입력.
+        //Move By Key Control
+
+        //Move Speed  
+        //<좌우이동>===================================================
+        float h = Input.GetAxisRaw("Horizontal");
+        rigid.AddForce(Vector2.right * h, ForceMode2D.Impulse);
+        //============================================================
+        
+        
+        //Max Speed 
+        //<최대속도>============================================================
+        //가속이 붙어서 빨라지는걸 대비해 MaxSpeed를 정해서 그것보다 속력이 빨라지면 
+        //MaxSpeed로 속력을 고정해서 더이상 빨라지지 않게함.
+        if (rigid.velocity.x > maxSpeed) // 오른쪽 맥스 스피드
+        {
+            rigid.velocity = new Vector2(maxSpeed, rigid.velocity.y);
+        }
+
+        else if (rigid.velocity.x < maxSpeed * (-1)) // 왼쪽 맥스 스피드
+        {
+            rigid.velocity = new Vector2(maxSpeed * (-1), rigid.velocity.y);
+        }
+        //======================================================================
+
+    }
+   
+
+    // Update is called once per frame
+    void Update()
+    {
+        //Stop Speed
+        //좌우이동에서 방향키를 떼면 단위벡터를 활용해 속도가 감속하도록 함. 
+        //0.1f부분을 이용해서 원하는 만큼 감속될 수 있게 설정.
+        if (Input.GetButtonUp("Horizontal"))
+        {
+            rigid.velocity = new Vector2(rigid.velocity.normalized.x * 0.1f, rigid.velocity.y); //방향을 알아서 설정할 것.
+        }
+        
+       
+
+
+        //방향전환에 따라 flipX를 이용해 플레이어의 이미지가 반대쪽으로 향하게함.
+        //-1이면 왼쪽을 바라보는 것이기 때문에 왼쪽방향키를 누르면 filpX가 실행돼서 
+        //플레이어가 왼쪽을 바라보게 됨.
+        if (Input.GetButton("Horizontal"))
+        {
+            spriteRenderer.flipX = Input.GetAxisRaw("Horizontal") == -1;
+        }
+
+        //애니메이션
+        if (Mathf.Abs(rigid.velocity.x) < 0.3) //횡이동 값이 0 멈췄을 때
+        //속도가 완전히0에 다다르기 전에 0.3정도의 속도보다 아래면 Walking을 멈추는걸로 설정.
+        //왼쪽이든 오른쪽이든 상관없이 Math.Abs(속력값)을 이용해 크기를 이용해서 설정.
+        //Abs -> 절댓값
+        
+      
+        {
+            anim.SetBool("isWalking", false); //애니메이션 멈춤
+        }
+        else
+        {
+            anim.SetBool("isWalking", true);  //속력이 0.3보다 크면 isWalking애니메이션 시작.
+        }
+
+        //Jump
+        //점프 버튼을 눌렀을 때 그리고 animation이 isJumping이 아닐때 (즉 점프하는중이 아닐 때)
+        
+        if (Input.GetButtonDown("Jump") && !anim.GetBool("isJumping"))
+        {
+            rigid.AddForce(Vector2.up * jumppower, ForceMode2D.Impulse);  //점프힘 주기
+            anim.SetBool("isJumping", true); //Animation isJumping으로 바꾸기
+            PlaySound("JUMP");            //Jump사운드 키기
+        }
+
+
+        //그렇다면 2단점프는 어떻게 해야할까?
+
+
+        //OnCollisionEnter 바닥으로 부딪치면 일반 상태로 돌아가는 애니메이션으로 가는 알고리즘을 써도됨.
+
+        //RayCast :오브젝트 검색을 위해 Ray를 쏘는 방식
+        //Landing flatform
+        //Draw Ray() -> 에디터 상에서만 Ray를 그려주는 함수
+        
+        
+        if (rigid.velocity.y < 0)  //y축이 음수일 때 -> 내려갈 때만 광선을 쏴서 콜라이더 맞으면 isjumping 애니메이션을 줄임. 
+        //rigid.velocity.y 가 0보다 작으면 플레이어가 낙하하고 있다는 뜻이니.
+        {
+            RaycastHit2D rayHit = Physics2D.Raycast(rigid.position, Vector3.down, 1, LayerMask.GetMask("Flatform"));
+            // LayerMask.GetMask("레이어값")
+          
+            //RaycastHit2D 변수이름 = Physics2D.Raycast(쏠 기준이 되는 위치 , 광선 방향 , 광선 길이 , LayerMask.GetMask("맞는 Layer명")) 
+            //Player의 중심에서 쏘니까 Ray가 Player가 맞는 판정이뜸.
+            //-> 어떻게 해결하나? 플레이어의 콜라이더를 무시하고 싶다.
+            //-> LayerMask : 물리 효과를 구분하는 정수값. 를 이용하면 됨.
+            //GetMask() : 레이어 이름에 해당하는 정수값을 리턴하는 함수.
+            
+            //즉 LayerMask.GetMask("레이어명")을 이용해서 레이어명에 들어간 콜라이더만 리턴하겠다.
+            //Flatform을 넣어줌으로써 Player에서 나오는 Ray가 Platform을 맞을때만 인식.
+            
+            
+            if (rayHit.collider != null) //맞은 건 콜라이더    콜라이더가 맞았다면? 이런 뜻임. 
+                                         //rayhit은 관통이 안됨. 그래서 플레이어가 맞는거임 position이 중심이니까.
+                                         //그러면 player의 콜라이더를 무시 못할까?
+                                        
+            {
+                if (rayHit.distance < 0.5f)  //Ray에 닿았을 때의 거리.
+                {
+                    anim.SetBool("isJumping", false); // 
+
+                }
+            }
+
+        }
+        //Debug.DrawRay(rigid.position, Vector3.down, new Color(0, 1, 0)); //광선 보이게 하기 
+
+
+    }
+
+
+    void OnCollisionEnter2D(Collision2D collision) //충돌한 물체가 collision.
+    {
+        if(collision.gameObject.tag == "Enemy")  //충돌한 물체의 태그가 Enemy로 되어있으면
+        {
+            if(rigid.velocity.y < 0 && transform.position.y > collision.transform.position.y) // 낙하중이고 Player가 충돌한 물체보다 y축의 값이 위이면
+            {                                                                                 // 즉 물체보다 위에 있고 떨어지는 상태이면
+                OnAttack(collision.transform);  //OnAttack 함수 호출
+                PlaySound("ATTACK");            //ATTACK 사운드 플레이
+
+            }
+            else 
+            OnDamaged(collision.transform.position); //아니라면 즉 떨어지면서 부딪치는게 아니라 그냥 몬스터와 충돌했을 땐 OnDamaged함수 호출
+
+        }    
+    }
+
+    void OnTriggerEnter2D(Collider2D collision)   //Trigger 이벤트는 콜라이더가 충돌했을 때 
+    {                                             // + Collision은 물체가 충돌했을 때 인 점을 인지하자.
+        if (collision.gameObject.tag == "Item")   //부딪친 게임오브젝트의 Tag가 item일 때
+        {
+            //Point
+            bool isBronze = collision.gameObject.name.Contains("Bronze"); //Contains(비교문): 대상 문자열에 비교문이 있으면 true
+            bool isSilver = collision.gameObject.name.Contains("Silver"); //즉 오브젝트를 여러 개 생성할 때 숫자가 붙으니 Contains함수를 쓰면 편함.
+            bool isGold = collision.gameObject.name.Contains("Gold");     //ex) 이름에 Gold가 포함된 오브젝트들.
+
+            if(isBronze)
+                gameManager.stagePoint += 50; //브론즈일때 gameManager의 stagePoint를 더한다.
+            else if(isSilver)
+                gameManager.stagePoint += 100; //실버일때는 100점
+            else if(isGold)
+                gameManager.stagePoint += 300; //골드일때는 300점
+            PlaySound("ITEM"); //ITEM의 사운드를 내준다.
+            //Deactive Item
+            collision.gameObject.SetActive(false); //먹었으니 점수를 더하고 Coin들은 사라진다.
+        }
+        else if (collision.gameObject.tag == "Finish") //Finish태그가 적용된 Object와 충돌했을 때
+        {
+            Debug.Log("충돌했습니다!"); //콘솔에 뜨는 로그
+
+            //Next Stage
+            gameManager.NextStage(); // NextStage함수 호출 GameManager에 있음.
+            PlaySound("FINISH"); //Finish사운드를 내준다.
+        }
+    }
+
+    void OnDamaged(Vector2 targetPos) //데미지를 입었을때 
+    {
+        //Health Down
+        gameManager.HealthDown();  //HealthDown함수를 호출한다.
+
+        //Change Layer
+        gameObject.layer = 10; //PlayerDamaged로 layer를 바꿈.  에디터에서 layer10을 Enemy와 충돌판정을 안하게 설정해놓고, layer를 바꿔 무적시간을 만들어줌.
+
+        //View Alpha
+        spriteRenderer.color = new Color(1, 1, 1,0.4f); // new Color(1,1,1 ,투명도) 마지막 4번째는 투명도 설정임. 무적시간이라는걸 인지하도록 컬러를 바꿔줌. 
+
+        //Reaction Force
+        int dirc = transform.position.x - targetPos.x > 0 ? 1 : -1; //삼항연산자를 사용해서 Player의 위치와 targetPos 의 위치를 뺐을 때 0보다 크면 1 적으면 -1
+        //양수이면 x에다 1 반환 음수면 -1을 반환   즉 왼쪽에서 맞으면 왼쪽으로 팅기고 오른쪽에서 맞으면 오른쪽으로 팅긴다는 뜻.
+        rigid.AddForce(new Vector2(dirc,1)*7, ForceMode2D.Impulse); //밀려나는거 힘 주기
+
+        Invoke("OffDamaged", 3); // Invoke() 함수로 무적 시간을 결정. //OffDamaged 무적시간이 끝나는걸 설정.  
+                                                                    //Invoke("함수 이름", 시간 ) 을 통해서 시간이 지난 뒤 함수를 실행함. 
+
+        //피격사운드
+        PlaySound("DAMAGED");  //DAMAGED 데미지 입는 사운드 출력
+        //Animation
+        anim.SetTrigger("doDamaged"); //Damage 입는 걸 SetTrigger로 해서 바로 실행하고 끝나는 애니메이션 
+
+    }
+    
+    void OffDamaged() //무적해제
+    {
+        //Change Layer
+        gameObject.layer = 9; //Player로 layer를 바꿈.  다시 피격 되는 layer로 전환
+
+        //View Alpha
+        spriteRenderer.color = new Color(1, 1, 1); //다시 원래색으로 돌아오게함. 
+
+    } 
+
+    void OnAttack(Transform enemy)    //몬스터를 밟았을 때
+    {
+        //Point
+        gameManager.stagePoint += 100;  //포인트 추가
+
+        //Reaction Force
+        rigid.AddForce(Vector2.up * 5, ForceMode2D.Impulse); //몬스터를 밟았을 때 위쪽으로 힘 주기
+
+        //Enemy Die
+        Enemy enemymove = enemy.GetComponent<Enemy>(); //Enemy클래스 불러오기.
+        enemymove.OnDamaged(); //Enemy안에 있는 OnDamaged 함수 호출
+    }
+   
+    public void OnDie()   //플레이어가 죽었을 때
+    {
+        //Sprite Alpha
+        spriteRenderer.color = new Color(1, 1, 1, 0.4f); //색 바꿈
+        //Sprite Flip Y
+        spriteRenderer.flipY = true; //Y축을 바꿔줌 즉 플레이어가 뒤집힘.
+        //Collider Disable
+        capsulecollider2D.enabled = false; //물리효과를 끔. 그러면 추락하겠죠?
+        //Die Effect Jump
+        rigid.AddForce(Vector2.up * 5, ForceMode2D.Impulse); //위로 힘 주기
+        //Die Sound
+        PlaySound("DIE"); //죽는 사운드
+
+    }
+    public void VelocityZero()
+    {
+        rigid.velocity = Vector2.zero; //속력을 0으로 만듬.
+    }
+}
