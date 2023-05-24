@@ -1,0 +1,114 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;  //UI를 쓸려면 항상 UnityEngine.UI를 추가시켜야한다.
+using UnityEngine.SceneManagement;
+
+public class GameManager : MonoBehaviour
+{
+    public int totalPoint;
+    public int stagePoint;
+    public int stageIndex;
+    public int health; //플레이어 HP
+    public GameObject[] Stages;
+    public Player player;
+
+    //UI
+    public Image[] UIhealth;
+    public Text UIPoint;
+    public Text UIStage;
+    public GameObject RestartButton;
+    //점수와 스테이지를 관리
+
+
+
+
+    public void NextStage()
+    {
+        if (stageIndex < Stages.Length-1)
+        {
+            Stages[stageIndex].SetActive(false);
+            stageIndex++;
+            Stages[stageIndex].SetActive(true);
+            PlayerReposition();
+
+            UIStage.text = "STAGE" + (stageIndex + 1); 
+        }
+        else
+        {
+            //Player Control Lock
+            Time.timeScale = 0;
+            //Game Clear
+            //Result UI
+            Debug.Log("게임 클리어!");
+            //Restart Button 
+            Text btnText = RestartButton.GetComponentInChildren<Text>();//버튼텍스트는 자식오브젝트이므로 Inchildren을 붙여야 함.
+            btnText.text = "게임 클리어!";
+            RestartButton.SetActive(true); 
+
+        }
+        //Calculate Point
+        totalPoint += stagePoint; //토탈 스테이지에 스테이지에서 얻은 포인트를 더해줌.
+        stagePoint = 0; //스테이지가 넘어갔으니 스테이지 포인트는 0으로 초기화
+    }
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+    void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.tag == "Player")
+        {
+            if (health > 1)
+            {
+                //Player Reposition
+                PlayerReposition();
+                HealthDown();
+
+            }
+            else
+            {
+                //Health Down
+                HealthDown();
+            }
+        }
+    }
+
+    void PlayerReposition()
+    {
+        player.transform.position = new Vector3(0, 0.6f, -1);
+        player.VelocityZero();
+    }
+    public void HealthDown()
+    {
+        if(health > 1)
+        {
+            health--;
+            UIhealth[health].color = new Color(1, 0, 0, 0.2f); //3에서 2로 깎였으니 투명도를 깎아 목숨이 깎인걸 표시한다. 
+        }
+        else
+        {
+            //All Health UI
+            UIhealth[0].color = new Color(1, 0, 0, 0.2f);
+            //Player Die effect
+            player.OnDie();
+            //Result UI
+            Debug.Log("죽었습니다!");
+            //Retry Button UI
+            RestartButton.SetActive(true); // 안보이던거 플레이어 죽으면 보이게 하기.
+            Text btnText = RestartButton.GetComponent<Text>(); 
+        }
+    }
+    // Update is called once per frame
+    void Update()
+    {
+        UIPoint.text = (totalPoint + stagePoint).ToString(); //숫자니까 묶어서 .ToString()으로 해준다.
+    }
+    
+    public void Restart()
+    {
+        Time.timeScale = 1;
+        SceneManager.LoadScene(0);
+    }
+}
