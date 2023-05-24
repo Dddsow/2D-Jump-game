@@ -1,0 +1,113 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Enemy : MonoBehaviour
+{
+    // Start is called before the first frame update
+    Rigidbody2D rigid;
+    SpriteRenderer spriteRenderer;  //방향바꾸기 랜더러
+    Animator anim; //애니메이션
+    CapsuleCollider2D capsulecollider2D;
+    public int nextMove;
+
+
+    void Awake() //시작하고 처음 한 번 실행됨. 
+    {
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        rigid = GetComponent<Rigidbody2D>();
+        anim = GetComponent<Animator>();
+        capsulecollider2D = GetComponent<CapsuleCollider2D>();
+        Think(); //몬스터 생각함수 출력.
+
+        Invoke("Think", 5); //주어진 시간이 지난 뒤, 지정된 함수를 실행하는 함수  (함수 이름 , 주어진 시간)
+    }
+
+    void FixedUpdate() //1초에 50~60번 생각   
+    {
+        //Move
+        rigid.velocity = new Vector2(nextMove, rigid.velocity.y);
+        //NextMove를 랜덤값으로 설정해주고 몬스터가 바뀌는 NextMove값을 통해 x의 방향을 알아서 주기적으로 랜덤적으로 움직이게 함. -> AI 
+      
+        //Platform Check 낭떠러지에서 떨어지지 않게 Ray를 써서 확인.
+        //Enemy가 낭떠러지에 떨어지지 않게 하기 위해서 Enemy가 바라보는 앞 쪽으로 광선을싸서 플랫폼이 있는지 없는지 확인함.
+        
+        Vector2 frontVec = new Vector2(rigid.position.x + nextMove * 0.3f, rigid.position.y); //너무 멀리서 방향전환을 하면 nextMove에다가 소수점 곱해서 조절하기. 
+        //rigid.position -> Enemy의 위치에 NextMove을 더해 앞쪽에 Ray 생성.
+        
+        Debug.DrawRay(frontVec, Vector3.down, new Color(0, 1, 0));
+        RaycastHit2D rayHit = Physics2D.Raycast(frontVec, Vector3.down, 1, LayerMask.GetMask("Flatform"));
+       
+        
+        // LayerMask.GetMask("레이어값") 
+        
+        
+        if (rayHit.collider == null) //Ray가 맞은 콜라이더가 아무것도 없다면 Return함수 호출.
+        {
+            Return();
+        }
+
+
+    }
+   
+    //행동지표를 바꿔줄 함수 하나를 생성
+    void Think()
+    {
+        //Set Next Active
+        nextMove = Random.Range(-1, 2); //랜덤값을 Vector에다 넣어줌으로써 -1,0,1로 멈추거나 앞으로가거나 뒤로 가거나를 Invoke함수를통해 3이라는 시간마다 재설정.
+       //Random.Range(-1,2) -> -1,0,1를 랜덤으로 반환 Range 앞쪽 이상 뒤쪽 미만이 Range의 범위이다.
+        
+        //Sprite Animation
+
+        anim.SetInteger("Walkspeed", nextMove); //NextMove가 0이 아닌값일때 WalkSpeed애니메이션 나오게 설정. -> 이건 한 번 더봐야할듯 기억안남.
+        
+
+        //Filp Sprite
+        if (nextMove != 0)   //NextMove값이 0이 아니라면 즉 -1,1이라면
+        {
+            spriteRenderer.flipX = nextMove == 1; //NextMove가 1이라면 filpX 활성화.
+        }
+
+        //Recursive
+        float nextThinktime = Random.Range(2f, 5f); //nextThinktime도 랜덤으로해서 생각하는 시간도 랜덤으로줌.
+        Invoke("Think", nextThinktime); //재귀함수 : 자신을 스스로 호출하는 함수.  재귀함수와 Invoke를 씀으로써 주기적으로 자기를 호출하며 생각하게 만듬.
+
+
+    }
+
+    void Return() //Ray에 맞은 콜라이더가 null값이면 호출되는 함수 낭떠러지에서 돌아서게 만들기 위한 함수.
+    {
+            nextMove *= -1;    // nextMove값에 -1을 곱해 방향을 바꿈.
+            spriteRenderer.flipX = nextMove == 1; //nextMove에다 -1을 곱해서 1이됐다면 filpX를 시켜줌.
+
+            CancelInvoke(); // 현재 작동 중인 모든 Invoke함수를 멈추는 함수
+            Invoke("Think", 5); //생각을 멈추게 하고 다시 5라는시간뒤에 Think함수를 호출해 다시 생각해서 이동하도록함.
+    }
+
+    public void OnDamaged()  //Player 스크립트와 연동. 플레이어가 Enemy를 밟았을 때 OnDamaged함수 호출하게함.
+    {
+        //Sprite Alpha
+        spriteRenderer.color = new Color(1, 1, 1, 0.4f); //색을 0.4정도로 투명하게
+        //Sprite Flip Y
+        spriteRenderer.flipY = true; //뒤집어짐.
+        //Collider Disable
+        capsulecollider2D.enabled = false; //콜라이더 충돌 무시 즉 떨어짐.
+        //Die Effect Jump
+        rigid.AddForce(Vector2.up * 5, ForceMode2D.Impulse); //잠깐 위로 힘을 줌.
+        //Destroy
+        Invoke("DeActive", 5); // 죽은 Enemy 오브젝트를 5라는 시간 뒤에 삭제시키기 위함.
+
+        
+    }
+    void DeActive() //오브젝트를 없애는 함수.
+    {
+        gameObject.SetActive(false); //오브젝트 비활성화. 사라짐. 
+    }
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+   
+}
