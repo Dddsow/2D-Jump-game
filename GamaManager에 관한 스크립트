@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;  //UI를 쓸려면 항상 UnityEngine.UI를 추가시켜야한다.
-using UnityEngine.SceneManagement;
+using UnityEngine.SceneManagement; //Scene을 전환하기 위해서 필요
 
 public class GameManager : MonoBehaviour
 {
@@ -23,28 +23,28 @@ public class GameManager : MonoBehaviour
 
 
 
-    public void NextStage()
+    public void NextStage() //NextStage를 부르기 위한 함수
     {
-        if (stageIndex < Stages.Length-1)
+        if (stageIndex < Stages.Length-1) //지금 Stage가 Stage길이보다 짧을 때 즉 , 남은 스테이지가 더 있을 때
         {
-            Stages[stageIndex].SetActive(false);
-            stageIndex++;
-            Stages[stageIndex].SetActive(true);
-            PlayerReposition();
+            Stages[stageIndex].SetActive(false); //지금 스테이지 전부 비활성화
+            stageIndex++;   //스테이지 더하고
+            Stages[stageIndex].SetActive(true); //스테이지 활성화
+            PlayerReposition(); //플레이어는 다시 원위치에 가져다 놓음.
 
-            UIStage.text = "STAGE" + (stageIndex + 1); 
+            UIStage.text = "STAGE" + (stageIndex + 1); //UI stage 1 추가 
         }
-        else
+        else //Stage가 끝났을 때
         {
             //Player Control Lock
-            Time.timeScale = 0;
+            Time.timeScale = 0; //플레이어를 멈춤.
             //Game Clear
             //Result UI
-            Debug.Log("게임 클리어!");
+            Debug.Log("게임 클리어!"); 
             //Restart Button 
             Text btnText = RestartButton.GetComponentInChildren<Text>();//버튼텍스트는 자식오브젝트이므로 Inchildren을 붙여야 함.
-            btnText.text = "게임 클리어!";
-            RestartButton.SetActive(true); 
+            btnText.text = "게임 클리어!"; //Text를 게임 클리어로 수정 원래는 다시하기 버튼
+            RestartButton.SetActive(true);  // RestartButton을 활성화 
 
         }
         //Calculate Point
@@ -56,38 +56,40 @@ public class GameManager : MonoBehaviour
     {
         
     }
-    void OnTriggerEnter2D(Collider2D collision)
+    void OnTriggerEnter2D(Collider2D collision) //이건 GameManager에 콜라이더를 만들고 낙하 시 부딪치면 다시 원래 대로 돌아가게 만들어줌.
     {
-        if (collision.gameObject.tag == "Player")
+        if (collision.gameObject.tag == "Player") //플레이어가 부딪쳤을 때
         {
-            if (health > 1)
+            if (health > 1) // HP가 남아있으면
             {
                 //Player Reposition
-                PlayerReposition();
-                HealthDown();
+                PlayerReposition(); //플레이어 원위치
+                HealthDown(); //피 깎기
 
             }
-            else
+            else //피가 다 딸았으면 즉 죽었으면
             {
                 //Health Down
-                HealthDown();
+                HealthDown(); //HP감소
             }
         }
     }
 
-    void PlayerReposition()
+    void PlayerReposition() //플레이어 재위치
     {
         player.transform.position = new Vector3(0, 0.6f, -1);
         player.VelocityZero();
     }
-    public void HealthDown()
+    public void HealthDown() //HP감소
     {
-        if(health > 1)
+        if(health > 1) //
         {
-            health--;
+            health--; //HP감소
             UIhealth[health].color = new Color(1, 0, 0, 0.2f); //3에서 2로 깎였으니 투명도를 깎아 목숨이 깎인걸 표시한다. 
+            //UIhealth를 배열로 만들어놓고 health 1감소시 그에 따른 캐릭터 목숨 이미지를 투명도를 깎는다. 
+            //Health와 같이 깎이므로 알아서 됨.
         }
-        else
+        else //health가 전부 깎였을 때
         {
             //All Health UI
             UIhealth[0].color = new Color(1, 0, 0, 0.2f);
@@ -106,7 +108,7 @@ public class GameManager : MonoBehaviour
         UIPoint.text = (totalPoint + stagePoint).ToString(); //숫자니까 묶어서 .ToString()으로 해준다.
     }
     
-    public void Restart()
+    public void Restart() //Button Onclick()
     {
         Time.timeScale = 1;
         SceneManager.LoadScene(0);
